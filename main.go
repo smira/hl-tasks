@@ -118,6 +118,7 @@ func PgWorker(input <-chan *Task, done chan<- struct{}, counter *Counter) {
 	}
 
 	db.Close()
+	done <- struct{}{}
 }
 
 var stop = false
