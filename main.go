@@ -7,6 +7,10 @@ import (
 	"github.com/fzzy/radix/redis"
 	_ "github.com/lib/pq"
 	"log"
+	"math/rand"
+	"os"
+	"os/signal"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -59,7 +63,7 @@ func RedisClient() *redis.Client {
 }
 
 func PgClient() *sql.DB {
-	db, err := sql.Open("postgres", "user=student dbname=student sslmode=disable")
+	db, err := sql.Open("postgres", "user=student dbname=student sslmode=disable host=/var/run/postgresql")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,8 +76,16 @@ func RedisWorker(input <-chan *Task, done chan<- struct{}, counter *Counter) {
 
 	for task := range input {
 		if task.Op == OpWrite {
-			reply := client.Cmd("HSET", task.Key, task.Field, task.Value)
-			_ = reply
+			client.Cmd("HSET", task.Key, task.Field, task.Value)
+		} else if task.Op == OpRead {
+			reply := client.Cmd("HGET", task.Key, task.Field)
+			val, err := reply.Str()
+			if err != nil {
+				log.Fatal(err)
+			}
+			if !strings.HasSuffix(val, task.Value) {
+				log.Fatal(val, task.Value, task)
+			}
 		}
 		counter.Increment()
 	}
@@ -91,6 +103,16 @@ func PgWorker(input <-chan *Task, done chan<- struct{}, counter *Counter) {
 			if err != nil {
 				log.Fatal(err)
 			}
+		} else if task.Op == OpRead {
+			row := db.QueryRow("SELECT "+task.Field+" FROM data WHERE id = $1", task.Key)
+			var val string
+			err := row.Scan(&val)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if !strings.HasSuffix(val, task.Value) {
+				log.Fatal(val, task.Value, task)
+			}
 		}
 		counter.Increment()
 	}
@@ -98,14 +120,31 @@ func PgWorker(input <-chan *Task, done chan<- struct{}, counter *Counter) {
 	db.Close()
 }
 
+var stop = false
+
+func SigHandler() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		<-c
+		stop = true
+		fmt.Printf("Stopping...\n")
+	}()
+}
+
 func main() {
 	var (
-		workers int
-		mode    string
+		workers, numObjects, writePercent int
+		mode                              string
 	)
 	flag.IntVar(&workers, "workers", 4, "number of parallel workers")
+	flag.IntVar(&numObjects, "num_objects", 100000, "number of objects")
 	flag.StringVar(&mode, "mode", "redis", "operation mode: redis|postgres")
+	flag.IntVar(&writePercent, "write_percent", 30, "percent of write operations in rw phase")
 	flag.Parse()
+
+	SigHandler()
 
 	if mode == "redis" {
 		client := RedisClient()
@@ -135,11 +174,23 @@ func main() {
 		}
 	}
 
-	for i := 0; i < 1000000; i++ {
-		for j := 0; j < 1; j++ {
-			queue <- &Task{Op: OpWrite, Key: fmt.Sprintf("obj%d", i), Field: fmt.Sprintf("f%d", j), Value: "xxxx"}
+	for i := 0; i < numObjects && !stop; i++ {
+		for j := 0; j < 10 && !stop; j++ {
+			queue <- &Task{Op: OpWrite, Key: fmt.Sprintf("obj%d", i), Field: fmt.Sprintf("f%d", j), Value: fmt.Sprintf("xx%d.%d", i, j)}
 		}
 	}
+
+	fmt.Printf("Going r/w\n")
+
+	for !stop {
+		op := OpRead
+		i, j := rand.Int31n(int32(numObjects)), rand.Int31n(10)
+		if int(rand.Int31n(100)) < writePercent {
+			op = OpWrite
+		}
+		queue <- &Task{Op: op, Key: fmt.Sprintf("obj%d", i), Field: fmt.Sprintf("f%d", j), Value: fmt.Sprintf("%d.%d", i, j)}
+	}
+
 	close(queue)
 
 	for i := 0; i < workers; i++ {
