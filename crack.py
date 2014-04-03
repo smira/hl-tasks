@@ -17,7 +17,7 @@ alpha:
   hash: fnv1a_64
   distribution: ketama
   auto_eject_hosts: true
-  server_retry_timeout: 5000
+  server_retry_timeout: 8000
   server_failure_limit: 2
   timeout: 100
   servers:
