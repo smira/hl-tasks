@@ -23,7 +23,7 @@ func getDelay() time.Duration {
 	current := int(currentConcurrency)
 
 	if current > concurrencyLimit {
-		delay = time.Duration(float64(delay) * math.Pow(factor, float64(current-concurrencyLimit)))
+		delay = time.Duration(float64(delay) * math.Pow(factor, float64(current-concurrencyLimit)/10.0))
 	}
 
 	return delay
@@ -62,6 +62,7 @@ func main() {
 	flag.IntVar(&concurrencyLimit, "limit", 30, "limit on concurrency")
 	flag.Float64Var(&factor, "factor", 1.05, "factor of increasing delay")
 	flag.DurationVar(&baseDelay, "baseDelay", 100*time.Millisecond, "base service delay")
+	flag.Parse()
 
 	go reporter()
 	http.HandleFunc("/api", httpHandler)
