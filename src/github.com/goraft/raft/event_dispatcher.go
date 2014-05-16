@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 )
@@ -55,6 +56,12 @@ func (d *eventDispatcher) RemoveEventListener(typ string, listener EventListener
 func (d *eventDispatcher) DispatchEvent(e Event) {
 	d.RLock()
 	defer d.RUnlock()
+
+	if e.Type() == LeaderChangeEventType {
+		fmt.Printf("New leader: %s (was %s)\n", e.Value().(string), e.PrevValue().(string))
+	} else if e.Type() == StateChangeEventType {
+		fmt.Printf("State %s -> %s\n", e.PrevValue().(string), e.Value().(string))
+	}
 
 	// Automatically set the event source.
 	if e, ok := e.(*event); ok {

@@ -1104,6 +1104,7 @@ func (s *server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVot
 
 // Adds a peer to the server.
 func (s *server) AddPeer(name string, connectiongString string) error {
+	fmt.Printf("Peer added: %s [%s]\n", name, connectiongString)
 	s.debugln("server.peer.add: ", name, len(s.peers))
 
 	// Do not allow peers to be added twice.

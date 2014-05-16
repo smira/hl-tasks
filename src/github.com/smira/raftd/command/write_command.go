@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"github.com/goraft/raft"
 	"github.com/smira/raftd/db"
 )
@@ -28,5 +29,6 @@ func (c *WriteCommand) CommandName() string {
 func (c *WriteCommand) Apply(server raft.Server) (interface{}, error) {
 	db := server.Context().(*db.DB)
 	db.Put(c.Key, c.Value)
+	fmt.Printf("DB Put: %v -> %v\n", c.Key, c.Value)
 	return nil, nil
 }
