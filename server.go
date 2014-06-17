@@ -23,7 +23,7 @@ func getDelay() time.Duration {
 	current := int(currentConcurrency)
 
 	if current > concurrencyLimit {
-		delay = time.Duration(float64(delay) * math.Pow(factor, float64(current-concurrencyLimit)/10.0))
+		delay = time.Duration(float64(delay) * math.Pow(factor, float64(current-concurrencyLimit)/15.0))
 	}
 
 	return delay
