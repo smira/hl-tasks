@@ -21,7 +21,7 @@ var (
 const (
 	server              = "http://127.0.0.1:8070/api"
 	expMinDelay         = 100 * time.Millisecond
-	expMaxDelay         = 1 * time.Minute
+	expMaxDelay         = 5 * time.Minute
 	expFactor   float64 = 2.71828
 	expJitter   float64 = 0.1
 )
@@ -79,39 +79,40 @@ func client() {
 					delay = expMaxDelay
 				}
 				delay += time.Duration(rand.NormFloat64() * expJitter * float64(time.Second))
-				lastDelay = delay
 			} else {
 				delay = simpleBackoffDelay
 			}
 		} else {
-			delay = time.Duration(exponentialDistribution(lambda)) * time.Second
+			delay = time.Duration(exponentialDistribution(lambda) * float64(time.Second))
 		}
+		lastDelay = delay
 		<-time.After(delay)
 
+		ch := make(chan error)
 		req, _ := http.NewRequest("GET", server, nil)
-		timedout := false
 
-		timer := time.AfterFunc(timeout, func() {
+		go func() {
+			resp, err := http.DefaultClient.Do(req)
+			if err == nil {
+				resp.Body.Close()
+			}
+
+			ch <- err
+		}()
+
+		select {
+		case err := <-ch:
+			if err == nil {
+				counterOk.Increment()
+				lastError = false
+				lastDelay = expMinDelay
+			} else {
+				counterError.Increment()
+				lastError = true
+			}
+		case <-time.After(timeout):
 			http.DefaultTransport.(*http.Transport).CancelRequest(req)
-			timedout = true
-		})
-
-		resp, err := http.DefaultClient.Do(req)
-		if err == nil {
-			resp.Body.Close()
-		}
-
-		timer.Stop()
-
-		if timedout {
 			counterTimeout.Increment()
-			lastError = true
-		} else if err == nil {
-			counterOk.Increment()
-			lastError = false
-			lastDelay = expMinDelay
-		} else {
-			counterError.Increment()
 			lastError = true
 		}
 	}
