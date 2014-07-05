@@ -29,6 +29,7 @@ N = 10000
 PAGE = 10
 
 memcacheds = {}
+initialSizes = {}
 
 print "Starting memcacheds on ports: %r" % (MEMCACHED_PORTS, )
 
@@ -74,6 +75,18 @@ def renew_values():
     for i in xrange(N):
         values[i] = str(random.randrange(10000000))
 
+def print_sizes():
+    initial = initialSizes == {}
+    for port in memcacheds.keys():
+        mc = memcache.Client([('127.0.0.1:%d' % port)])
+        size = int(mc.get_stats()[0][1]['curr_items'])
+        if initial:
+            initialSizes[port] = size
+            print " - %d: %d items" % (port, size)
+        else:
+            print " - %d: %d items, %d diff" % (port, size, size - initialSizes[port])
+        mc.disconnect_all()
+
 def refill_memcached():
     print "Refilling memcached..."
     i = 0
@@ -86,11 +99,8 @@ def refill_memcached():
         i += PAGE
 
     print "Item distribution:"
+    print_sizes()
 
-    for port in memcacheds.keys():
-        mc = memcache.Client([('127.0.0.1:%d' % port)])
-        print " - %d: %s items" % (port, mc.get_stats()[0][1]['curr_items'])
-        mc.disconnect_all()
 
 try:
 
