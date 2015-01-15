@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 import memcache
-import collections
-import sys
-import os
 import subprocess
 import time
 import random
@@ -50,6 +47,7 @@ values = {}
 
 random.seed()
 
+
 def check_cycle():
     mismatched = 0
     missing = 0
@@ -70,10 +68,12 @@ def check_cycle():
 
     print "Missing: %d, wrong value: %d" % (missing, mismatched)
 
+
 def renew_values():
     print "Refreshing values..."
     for i in xrange(N):
         values[i] = str(random.randrange(10000000))
+
 
 def print_sizes():
     initial = initialSizes == {}
@@ -86,6 +86,7 @@ def print_sizes():
         else:
             print " - %d: %d items, %d diff" % (port, size, size - initialSizes[port])
         mc.disconnect_all()
+
 
 def refill_memcached():
     print "Refilling memcached..."
