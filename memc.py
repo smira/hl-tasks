@@ -3,7 +3,6 @@
 import memcache
 import collections
 import sys
-import os
 import subprocess
 import time
 
@@ -36,8 +35,8 @@ try:
     for size, count in size_count:
         print "    alloc size: %6d bytes, count %6d items" % (size, count)
         for _ in xrange(count):
-           mc.set("key%d" % i, "A" * size)
-           i += 1
+            mc.set("key%d" % i, "A" * size)
+            i += 1
 
     # get slabs tats
     stats = mc.get_stats('slabs')[0][1]
@@ -45,13 +44,14 @@ try:
 
     for key, value in stats.iteritems():
         if ":" not in key:
-           continue
+            continue
         slab, name = key.split(":")
         slabs[int(slab)][name] = value
 
     for slab in sorted(slabs.keys()):
         print "%3d: chunk size %6s bytes, used  %6s chunks, alloc memory %8d, used memory %8s bytes" % \
-            (slab, slabs[slab]['chunk_size'], slabs[slab]['used_chunks'], int(slabs[slab]['total_pages'])*1048576, slabs[slab]['mem_requested'])
+            (slab, slabs[slab]['chunk_size'], slabs[slab]['used_chunks'],
+             int(slabs[slab]['total_pages']) * 1048576, slabs[slab]['mem_requested'])
 finally:
     proc.terminate()
     proc.wait()
