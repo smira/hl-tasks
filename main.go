@@ -140,7 +140,7 @@ func main() {
 		mode                              string
 	)
 	flag.IntVar(&workers, "workers", 4, "number of parallel workers")
-	flag.IntVar(&numObjects, "num_objects", 100000, "number of objects")
+	flag.IntVar(&numObjects, "num_objects", 10000, "number of objects")
 	flag.StringVar(&mode, "mode", "redis", "operation mode: redis|postgres")
 	flag.IntVar(&writePercent, "write_percent", 30, "percent of write operations in rw phase")
 	flag.Parse()
