@@ -5,7 +5,7 @@ import subprocess
 import time
 
 from twisted.web import server, resource
-from twisted.internet import reactor, protocol, defer
+from twisted.internet import reactor, protocol
 from twisted.protocols.memcache import MemCacheProtocol
 
 
